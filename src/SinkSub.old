@@ -1,0 +1,245 @@
+#include "SinkSub.h"
+
+SinkSub::SinkSub(int winWidth, int winHeight,
+            Texture2D *shipTex,
+            Texture2D *shipTexExpl,
+            Texture2D *subTex,
+            Texture2D *subTexExpl,
+            Texture2D *bombTex,
+            Texture2D *mineTex,
+            Texture2D *explTex,
+            Texture2D *splashTex,
+            Texture2D *seagullTex,
+            Texture2D *cloudTex,
+            Texture2D *iconTex) : winWidth_(winWidth), winHeight_(winHeight),
+            
+            shipTex_(shipTex),
+            shipTexExpl_(shipTexExpl),
+            subTex_(subTex),
+            subTexExpl_(subTexExpl),
+            bombTex_(bombTex),
+            mineTex_(mineTex),
+            explTex_(explTex),
+            splashTex_(splashTex),
+            seagullTex_(seagullTex),
+            cloudTex_(cloudTex),
+            iconTex_(iconTex)
+
+{
+      // Корабль
+
+      ship_ = new Destroyer(shipTex_, shipTexExpl_, 0.f, 150.f);
+
+      ship_->SetVelocityStep(0.5);
+      ship_->SetDefaultPos(winWidth_ / 2 - ship_->GetShipWidth() / 2, 150.f);
+      ship_->SetToDefaultPos();
+      ship_->SetBorders_X(0.f, static_cast<float>(winWidth_ - ship_->GetShipWidth()));
+
+      // Море
+      seaBeginY_ = static_cast<int>(ship_->GetShipPos().y + ship_->GetShipHeight()) - 9;
+      seaEndY_ = 620;
+
+      // Облака
+
+      sky_ = new Sky(cloudTex_, seagullTex_, 150, 50, winWidth_, seaBeginY_);
+
+      // Грунт
+      seabed_ = new Ground(static_cast<float>(seaEndY_), static_cast<float>(winWidth_),
+                           static_cast<float>(winHeight_));
+
+      ui_ = new UI(iconTex_, winWidth_, winHeight_);
+      ui_->SetSubCnt(subList_.size());
+
+      // Создаём подлодки
+      SubInit(&subList_, subTex_, subTexExpl_, mineTex_, ship_,
+              {0, static_cast<float>(seaBeginY_), static_cast<float>(winWidth_), static_cast<float>(seaEndY_)}, 0);
+}
+
+void SinkSub::Init()
+{
+}
+
+void SinkSub::Tick(int frame)
+{
+
+      // Ввод
+      if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_KP_4))
+      {
+            ship_->DecreaseVelocity_X();
+      }
+
+      if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_KP_6))
+      {
+            ship_->IncreaseVelocity_X();
+      }
+
+      if (IsKeyPressed(KEY_KP_1) && ship_->GetIsAlive() && ui_->GetisReadyToAttack())
+      {
+            bombList_.emplace_back(bombTex_, ship_->GetShipPos().x,
+                                   ship_->GetShipPos().y + ship_->GetShipHeight(), 1.f);
+            ui_->DecreaseBombs();
+      }
+      if (IsKeyPressed(KEY_KP_3) && ship_->GetIsAlive() && ui_->GetisReadyToAttack())
+      {
+            bombList_.emplace_back(bombTex_, ship_->GetShipPos().x + ship_->GetShipWidth() - 5,
+                                   ship_->GetShipPos().y + ship_->GetShipHeight(), 1.f);
+            ui_->DecreaseBombs();
+      }
+      if (IsKeyPressed(KEY_SPACE))
+      {
+            ResetLevel(&subList_, subTex_, subTexExpl_, mineTex_, ship_,
+                       {0, static_cast<float>(seaBeginY_), static_cast<float>(winWidth_), static_cast<float>(seaEndY_)},
+                       0);
+            bombList_.clear();
+            mineList_.clear();
+            sky_->ReInitClouds();
+            seabed_->ReGenerteLandscape();
+            ui_->UIreset(2, 0);
+      }
+
+      // Море
+      DrawRectangle(0, seaBeginY_, winWidth_, winHeight_ - seaBeginY_, {220, 210, 160, 255});
+      seabed_->Draw();
+
+      sky_->Tick(frame);
+
+      // Глубинные бомбы
+      if (bombList_.size() > 0)
+      {
+
+            for (Bomb &bomb : bombList_)
+            {
+
+                  bomb.Tick(frame);
+
+                  // Проверка столкновения с грунтом
+                  if (CheckCollisionRecs(bomb.GetHitbox(), seabed_->GetHitBox()) && bomb.GetIsAlive())
+                  {
+                        bomb.Die();
+                        ui_->IncreaseBombs();
+                  }
+
+                  if (!bomb.GetIsAlive())
+                  {
+                        explList_.emplace_back(explTex_, bomb.GetPosition().x + bomb.GetBombWidth() / 2,
+                                               bomb.GetPosition().y + bomb.GetBombHeight(), 38.f, 38.f, 1.f);
+                  }
+            }
+
+            // Удаление бомб
+            bombList_.erase(std::remove_if(bombList_.begin(), bombList_.end(), [](Bomb &bomb)
+                                           { return !(bomb.GetIsAlive()); }),
+                            bombList_.end());
+      }
+
+      // Мины
+
+      if (mineList_.size() > 0)
+      {
+            for (Mine &mine : mineList_)
+            {
+                  mine.Tick();
+
+                  // Проверка столкновения с кораблём
+                  if (CheckCollision(ship_, &mine) && ship_->GetIsAlive() && mine.GetIsAlive())
+                  {
+                        explList_.emplace_back(splashTex_, mine.GetPosition().x,
+                                               static_cast<float>(seaBeginY_) - 75.f / 2 + 15, 75.f, 75.f, 1.f);
+                        mine.Die();
+                        ship_->Die();
+                  }
+
+                  // Проверка всплытия мины
+                  if ((mine.GetPosition().y <= seaBeginY_ - mine.GetMineHeight() / 2) && mine.GetIsAlive())
+                  {
+                        explList_.emplace_back(splashTex_, mine.GetPosition().x,
+                                               static_cast<float>(seaBeginY_) - 75.f / 2 + 15, 75.f, 75.f, 1.f);
+                        mine.Die();
+                  }
+            }
+            // Удаление мин
+            mineList_.erase(std::remove_if(mineList_.begin(), mineList_.end(), [](Mine &mine)
+                                           { return !(mine.GetIsAlive()); }),
+                            mineList_.end());
+      }
+
+      // Корабль
+      ship_->Tick(frame);
+
+      if (!subList_.empty())
+      {
+            for (Submarine &s : subList_)
+            {
+                  s.Ai(mineList_);
+                  s.Tick(frame);
+
+                  // Проверка столкновения с бомбой
+                  if (bombList_.size() > 0)
+                  {
+                        for (Bomb &bomb : bombList_)
+                        {
+                              if (s.CheckCollision(bomb.GetHitbox()))
+                              {
+                                    bomb.Die();
+                                    s.Die();
+                                    ui_->AddScore();
+                                    ui_->IncreaseBombs();
+                              }
+                        }
+                  }
+            }
+
+            // Удаление ПЛ
+            subList_.erase(std::remove_if(subList_.begin(), subList_.end(), [](Submarine &sub)
+                                          { return !(sub.GetIsAlive()); }),
+                           subList_.end());
+            ui_->SetSubCnt(subList_.size());
+      }
+
+      // Проверяем подлодки и мины переходим на следующий уровень
+      if (subList_.empty() && mineList_.empty() && explList_.empty())
+      {
+            ui_->IncreaseLevel();
+            ResetLevel(&subList_, subTex_, subTexExpl_, mineTex_, ship_,
+                       {0, static_cast<float>(seaBeginY_), static_cast<float>(winWidth_), static_cast<float>(seaEndY_)},
+                       ui_->GetLevel());
+            bombList_.clear();
+            mineList_.clear();
+            sky_->ReInitClouds();
+            seabed_->ReGenerteLandscape();
+            ui_->UIreset();
+      }
+
+      if (explList_.size() > 0)
+      {
+            for (Explosion &expl : explList_)
+            {
+                  expl.Tick(frame);
+            }
+
+            // Удаление взрывов
+            explList_.erase(std::remove_if(explList_.begin(), explList_.end(), [](Explosion &expl)
+                                           { return !(expl.GetIsAlive()); }),
+                            explList_.end());
+      }
+
+      // проверяем не подбит ли корабль?
+      if (!ship_->GetIsAlive())
+      {
+            ui_->DecreaseLifes();
+            ResetLevel(&subList_, subTex_, subTexExpl_, mineTex_, ship_,
+                       {0, static_cast<float>(seaBeginY_), static_cast<float>(winWidth_), static_cast<float>(seaEndY_)},
+                       0);
+            bombList_.clear();
+            mineList_.clear();
+            sky_->ReInitClouds();
+            seabed_->ReGenerteLandscape();
+            ui_->UIreset();
+      }
+
+      ui_->Tick(frame);
+}
+
+SinkSub::~SinkSub()
+{
+}
