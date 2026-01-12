@@ -28,7 +28,7 @@ int main()
     sinkSubEngine.Tick(GetFrameTime());
 
     // Медиана
-    //DrawLine(1280 / 2, 0, 1280 / 2, 720, RED);
+    // DrawLine(1280 / 2, 0, 1280 / 2, 720, RED);
 
     EndDrawing();
     if (sinkSubEngine.GetGameStatus() == STATUS::EXIT)
@@ -38,6 +38,7 @@ int main()
     }
   }
 
+  sinkSubEngine.SaveState();
   CloseWindow();
   return 0;
 }

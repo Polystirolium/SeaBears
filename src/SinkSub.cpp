@@ -417,6 +417,22 @@ void SinkSub::DrawBombIcon(float posX, float posY)
       DrawLine(posX - 1, posY + 7, posX + 7, posY + 7, {121, 79, 57, 255});
 }
 
+void SinkSub::SaveState()
+{
+      // Открываем файл для записи
+    std::fstream fout("States/SinkSub.SB", std::ios::binary | std::ios::out);
+
+    // Открыт ли файл для записи
+    if (fout.is_open())
+    {
+        // Записываем тип файла
+        fout.write((char *)&level_, sizeof(level_));
+        
+        fout.close();
+    }
+ 
+}
+
 void SinkSub::DrawUI(int frame)
 {
       // Рисуем подложку с жизнями и кол-вом подлодок

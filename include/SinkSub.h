@@ -13,6 +13,7 @@
 #include "GameWindow.h"
 #include <algorithm>
 #include <vector>
+#include <fstream>
 
 class SinkSub
 {
@@ -21,6 +22,8 @@ public:
     SinkSub(int winWidth, int winHeight);
     void Tick(float deltaTime);
     STATUS GetGameStatus();
+    void SaveState();
+    void LoadState();
     ~SinkSub();
 
 private:
