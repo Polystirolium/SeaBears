@@ -110,7 +110,7 @@ void SinkSub::Tick(float deltaTime)
       {
             DropBombs(POSITION::BACK);
       }
-      
+
       if (IsKeyPressed(KEY_KP_3) && ship_->GetIsAlive() && bombCnt_ > 0)
       {
             DropBombs(POSITION::FRONT);
@@ -420,17 +420,29 @@ void SinkSub::DrawBombIcon(float posX, float posY)
 void SinkSub::SaveState()
 {
       // Открываем файл для записи
-    std::fstream fout("States/SinkSub.SB", std::ios::binary | std::ios::out);
+      std::fstream fout("States/SinkSub.SB", std::ios::binary | std::ios::out);
 
-    // Открыт ли файл для записи
-    if (fout.is_open())
-    {
-        // Записываем тип файла
-        fout.write((char *)&level_, sizeof(level_));
-        
-        fout.close();
-    }
- 
+      // Открыт ли файл для записи
+      if (fout.is_open())
+      {
+            // Записываем уровень в файл
+            fout.write((char *)&level_, sizeof(level_));
+
+            fout.close();
+      }
+}
+
+void SinkSub::LoadState()
+{
+      std::fstream fin("States/SinkSub.SB", std::ios::binary | std::ios::in);
+
+      if (fin)
+      {
+            // Считываем уровень из файла
+            fin.read((char *)&level_, sizeof(level_));
+      }
+
+      fin.close();
 }
 
 void SinkSub::DrawUI(int frame)

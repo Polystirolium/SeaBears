@@ -17,6 +17,7 @@ int main()
   UnloadImage(icon);
 
   SinkSub sinkSubEngine(windowDimensioms[0], windowDimensioms[1]);
+  sinkSubEngine.LoadState();
 
   SetTargetFPS(maxFrame);
 
