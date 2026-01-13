@@ -31,6 +31,7 @@ private:
     void DropBombs(POSITION pos);
     void ResetLevel();
     void SetLvlMsgPos();
+    void CountScores(int bmbID);
     void DrawBacking(float posX, float posY, float width, float height);
     void DrawBombIcon(float posX, float posY);
 
@@ -102,9 +103,11 @@ private:
     bool isPause{false};
     unsigned char msgAlpha_{0};
     Vector2 lvlMsgPos_{0, 0};
+    char subKilled_{0};
     char bombCnt_{4};
     char shipLifes_{0};
-    char score_{0};
+    int score_{0};
+    int curScore_{0};
 
     int level_{1};
 

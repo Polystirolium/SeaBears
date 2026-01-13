@@ -75,6 +75,8 @@ void SinkSub::Tick(float deltaTime)
       if (gameStatus_ == STATUS::RESETLEVEL)
       {
             level_ = 1;
+            curScore_ = 0;
+            score_ = 0;
             ResetLevel();
             gameStatus_ = STATUS::IDLE;
       }
@@ -221,9 +223,11 @@ void SinkSub::Tick(float deltaTime)
                         {
                               if (s.CheckCollision(bomb.GetHitbox()))
                               {
+                                    CountScores(bomb.GetID());
                                     bomb.Die();
                                     s.Die();
-                                    // ui_->AddScore();
+
+                                    subKilled_++;
                                     bombCnt_++;
                               }
                         }
@@ -234,13 +238,13 @@ void SinkSub::Tick(float deltaTime)
             subList_.erase(std::remove_if(subList_.begin(), subList_.end(), [](Submarine &sub)
                                           { return !(sub.GetIsAlive()); }),
                            subList_.end());
-            // ui_->SetSubCnt(subList_.size());
       }
 
       // Проверяем подлодки и мины переходим на следующий уровень
       if (subList_.empty() && mineList_.empty() && explList_.empty())
       {
             level_++;
+            score_ = score_ + curScore_;
             ResetLevel();
       }
 
@@ -384,6 +388,8 @@ void SinkSub::ResetLevel()
       mineList_.clear();
       bombCnt_ = 4;
       bmbId = 0;
+      subKilled_ = 0;
+      curScore_ = 0;
       // Регенерируем окружение
       sky_->ReInitClouds();
       seabed_->ReGenerteLandscape();
@@ -402,6 +408,18 @@ void SinkSub::SetLvlMsgPos()
       int txtWidth = MeasureText(TextFormat("Level %i", level_), fontSize_);
       lvlMsgPos_ = {static_cast<float>(winWidth_ / 2 - txtWidth / 2),
                     static_cast<float>(winHeight_ / 2 - fontSize_ / 2)};
+}
+
+void SinkSub::CountScores(int bmbID)
+{
+      if (bmbID == 0 && subKilled_ == 0)
+      {
+            curScore_ = curScore_ + 100;
+      }
+      else
+      {
+            curScore_ = curScore_ + 10;
+      }
 }
 
 void SinkSub::DrawBacking(float posX, float posY, float width, float height)
@@ -427,6 +445,7 @@ void SinkSub::SaveState()
       {
             // Записываем уровень в файл
             fout.write((char *)&level_, sizeof(level_));
+            fout.write((char *)&score_, sizeof(score_));
 
             fout.close();
       }
@@ -440,6 +459,7 @@ void SinkSub::LoadState()
       {
             // Считываем уровень из файла
             fin.read((char *)&level_, sizeof(level_));
+            fin.read((char *)&score_, sizeof(score_));
       }
 
       fin.close();
@@ -454,7 +474,7 @@ void SinkSub::DrawUI(int frame)
 
       // Рисуем подложку со счётом
       DrawBacking(1040.f, 42.f, 190.f, 65.f);
-      DrawTextEx(bldFont_, TextFormat("Score %i", score_), {1055.f, 50.f}, 25, 0, {235, 235, 235, 255});
+      DrawTextEx(bldFont_, TextFormat("Score %i", score_ + curScore_), {1055.f, 50.f}, 25, 0, {235, 235, 235, 255});
 
       float scrPosX = 1055.f;
       for (unsigned char i = 0; i < bombCnt_; i++)

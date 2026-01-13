@@ -36,6 +36,11 @@ Rectangle Bomb::GetHitbox()
     return hitBox_;
 }
 
+int Bomb::GetID()
+{
+    return id_;
+}
+
 bool Bomb::GetIsAlive()
 {
     return isAlive;

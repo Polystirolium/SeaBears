@@ -15,6 +15,7 @@ public:
     float GetBombWidth();
     float GetBombHeight();
     Rectangle GetHitbox();
+    int GetID();
 
     bool GetIsAlive();
     void Die();
